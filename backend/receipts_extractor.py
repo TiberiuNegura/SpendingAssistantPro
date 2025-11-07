@@ -5,131 +5,152 @@ from transformers import DonutProcessor, VisionEncoderDecoderModel
 import torch
 
 
-def parse_model_output(output_string: str):
+class ReceiptExtractor:
     """
-    Parses the custom tagged string output from the Donut model into a dictionary.
+    A class to extract information from receipts using the Donut model.
+
+    The model is loaded during initialization to avoid reloading it
+    for every extraction.
     """
-    result = {}
 
-    # 1. Parse the menu items
-    # Find the content inside <s_menu>...</s_menu>
-    menu_match = re.search(r"<s_menu>(.*?)</s_menu>", output_string, re.DOTALL)
-    if menu_match:
-        result['menu'] = []
-        menu_content = menu_match.group(1)
+    def __init__(self, model_name: str = "naver-clova-ix/donut-base-finetuned-cord-v2"):
+        """
+        Initializes the ReceiptExtractor by loading the model and processor.
 
-        # Split the menu content by the <sep/> separator
-        items = menu_content.split("<sep/>")
+        Args:
+            model_name (str): The name of the pre-trained Donut model to use.
+        """
+        print(f"Loading model '{model_name}'...")
+        self.processor = DonutProcessor.from_pretrained(model_name)
+        self.model = VisionEncoderDecoderModel.from_pretrained(model_name)
 
-        for item_string in items:
-            if not item_string.strip():
-                continue
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model.to(self.device)
+        print(f"Using device: {self.device}")
+        print("Model loaded successfully.")
 
-            item_dict = {}
-            # Find all tags (e.g., <s_nm>...</s_nm>) within this item
-            tags = re.findall(r"<s_(\w+)>(.*?)</s_\1>", item_string)
+    def process_receipt(self, receipt_path: str):
+        """
+        Extracts information from a given receipt image.
 
-            # The model output can have duplicate tags (like s_num)
-            # We'll store values as a list to capture all of them
+        Args:
+            receipt_path (str): The file path to the receipt image.
+
+        Returns:
+            dict: A dictionary containing the parsed receipt data, or None if an error occurs.
+        """
+        # 1. Load the image
+        try:
+            image = Image.open(receipt_path).convert("RGB")
+        except FileNotFoundError:
+            print(f"Error: Image file not found at {receipt_path}")
+            return None
+
+        # 2. Prepare for the model
+        pixel_values = self.processor(image, return_tensors="pt").pixel_values
+        task_prompt = "<s_cord-v2>"
+        decoder_input_ids = self.processor.tokenizer(
+            task_prompt, add_special_tokens=False, return_tensors="pt"
+        ).input_ids
+
+        # Move inputs to the correct device
+        pixel_values = pixel_values.to(self.device)
+        decoder_input_ids = decoder_input_ids.to(self.device)
+
+        # 3. Generate the output
+        outputs = self.model.generate(
+            pixel_values,
+            decoder_input_ids=decoder_input_ids,
+            max_length=self.model.decoder.config.max_position_embeddings,
+            early_stopping=True,
+            pad_token_id=self.processor.tokenizer.pad_token_id,
+            eos_token_id=self.processor.tokenizer.eos_token_id,
+            use_cache=True,
+            num_beams=1,
+            bad_words_ids=[[self.processor.tokenizer.unk_token_id]],
+            return_dict_in_generate=True,
+        )
+
+        # 4. Decode and Parse the Output
+        sequence = self.processor.batch_decode(outputs.sequences)[0]
+        sequence = sequence.replace(self.processor.tokenizer.eos_token, "").replace(self.processor.tokenizer.pad_token,
+                                                                                    "")
+        sequence = re.sub(r"<.*?>", "", sequence, count=1).strip()  # Remove first token
+
+        print("\n--- Raw Model Output ---")
+        print(sequence)
+
+        # Use the static parsing method
+        parsed_data = self._parse_model_output(sequence)
+        return parsed_data
+
+    @staticmethod
+    def _parse_model_output(output_string: str):
+        """
+        Parses the custom tagged string output from the Donut model into a dictionary.
+        """
+        result = {}
+
+        # 1. Parse the menu items
+        menu_match = re.search(r"<s_menu>(.*?)</s_menu>", output_string, re.DOTALL)
+        if menu_match:
+            result['menu'] = []
+            menu_content = menu_match.group(1)
+
+            items = menu_content.split("<sep/>")
+
+            for item_string in items:
+                if not item_string.strip():
+                    continue
+
+                item_dict = {}
+                tags = re.findall(r"<s_(\w+)>(.*?)</s_\1>", item_string)
+
+                for tag, value in tags:
+                    if tag not in item_dict:
+                        item_dict[tag] = []
+                    item_dict[tag].append(value)
+
+                if item_dict:
+                    result['menu'].append(item_dict)
+
+        # 2. Parse the sub_total
+        sub_total_match = re.search(r"<s_sub_total>(.*?)</s_sub_total>", output_string, re.DOTALL)
+        if sub_total_match:
+            result['sub_total'] = {}
+            sub_total_content = sub_total_match.group(1)
+            tags = re.findall(r"<s_(\w+)>(.*?)</s_\1>", sub_total_content)
             for tag, value in tags:
-                if tag not in item_dict:
-                    item_dict[tag] = []
-                item_dict[tag].append(value)
+                result['sub_total'][tag] = value
 
-            if item_dict:
-                result['menu'].append(item_dict)
+        # 3. Parse the total
+        total_match = re.search(r"<s_total>(.*?)</s_total>", output_string, re.DOTALL)
+        if total_match:
+            result['total'] = {}
+            total_content = total_match.group(1)
+            tags = re.findall(r"<s_(\w+)>(.*?)</s_\1>", total_content)
+            for tag, value in tags:
+                result['total'][tag] = value
 
-    # 2. Parse the sub_total
-    sub_total_match = re.search(r"<s_sub_total>(.*?)</s_sub_total>", output_string, re.DOTALL)
-    if sub_total_match:
-        result['sub_total'] = {}
-        sub_total_content = sub_total_match.group(1)
-        tags = re.findall(r"<s_(\w+)>(.*?)</s_\1>", sub_total_content)
-        for tag, value in tags:
-            # Assuming single value for sub_total fields
-            result['sub_total'][tag] = value
-
-    # 3. Parse the total
-    total_match = re.search(r"<s_total>(.*?)</s_total>", output_string, re.DOTALL)
-    if total_match:
-        result['total'] = {}
-        total_content = total_match.group(1)
-        tags = re.findall(r"<s_(\w+)>(.*?)</s_\1>", total_content)
-        for tag, value in tags:
-            # Assuming single value for total fields
-            result['total'][tag] = value
-
-    return result
+        return result
 
 
-def extract_receipt_info(receipt_path: str):
-    # 1. Load the model and processor from the transformers library
-    model_name = "naver-clova-ix/donut-base-finetuned-cord-v2"
+# --- How to use the class ---
+if __name__ == "__main__":
 
-    processor = DonutProcessor.from_pretrained(model_name)
-    model = VisionEncoderDecoderModel.from_pretrained(model_name)
+    # 1. Create an instance of the extractor.
+    #    (This will load the model, which might take a moment)
+    extractor = ReceiptExtractor()
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
-    print(f"Using device: {device}")
+    # 2. Define the path to your receipt
+    receipt_path = 'receipt_2.png'
 
-    # 2. Load your image
-    try:
-        image = Image.open(receipt_path).convert("RGB")
-    except FileNotFoundError:
-        print(f"Error: Image file not found at {receipt_path}")
-        return
+    # 3. Process the receipt
+    extracted_data = extractor.process_receipt(receipt_path)
 
-    pixel_values = processor(image, return_tensors="pt").pixel_values
-
-    # 3. Generate the output
-    task_prompt = "<s_cord-v2>"
-    decoder_input_ids = processor.tokenizer(
-        task_prompt, add_special_tokens=False, return_tensors="pt"
-    ).input_ids
-
-    # Move inputs to the correct device
-    pixel_values = pixel_values.to(device)
-    decoder_input_ids = decoder_input_ids.to(device)
-
-    # Generate the output (sequence of token IDs)
-    outputs = model.generate(
-        pixel_values,
-        decoder_input_ids=decoder_input_ids,
-        max_length=model.decoder.config.max_position_embeddings,
-        early_stopping=True,
-        pad_token_id=processor.tokenizer.pad_token_id,
-        eos_token_id=processor.tokenizer.eos_token_id,
-        use_cache=True,
-        num_beams=1,
-        bad_words_ids=[[processor.tokenizer.unk_token_id]],
-        return_dict_in_generate=True,
-    )
-
-    # --- 4. Decode and Parse the Output ---
-    # Convert the token IDs back into a string
-    sequence = processor.batch_decode(outputs.sequences)[0]
-    # Remove the special tokens
-    sequence = sequence.replace(processor.tokenizer.eos_token, "").replace(processor.tokenizer.pad_token, "")
-    sequence = re.sub(r"<.*?>", "", sequence, count=1).strip()  # Remove first token
-
-    print("--- Raw Model Output ---")
-    print(sequence)
-
-    # --- MODIFIED PART ---
-    # Instead of json.loads, use our new custom parser
-    parsed_data = parse_model_output(sequence)
-    # --- END OF MODIFIED PART ---
-
-    return parsed_data
-
-
-# --- How to use it ---
-# Replace 'path/to/your-receipt.jpg' with the actual path
-receipt_path = 'receipt_2.png'
-extracted_data = extract_receipt_info(receipt_path)
-
-if extracted_data:
-    print("\n--- Extracted Data (as JSON) ---")
-    # Pretty-print the dictionary as a JSON string
-    print(json.dumps(extracted_data, indent=2))
+    # 4. Print the results
+    if extracted_data:
+        print("\n--- Extracted Data (as JSON) ---")
+        print(json.dumps(extracted_data, indent=2))
+    else:
+        print(f"Could not process the receipt at {receipt_path}")
