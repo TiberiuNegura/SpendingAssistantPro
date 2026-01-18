@@ -5,16 +5,26 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3537e7c2-5925-4ce4-b115-f34d303df833" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/receipt_3.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../android-app/app/src/main/java/com/example/android_app/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../android-app/app/src/main/java/com/example/android_app/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../android-app/app/src/main/res/xml/network_security_config.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../android-app/app/src/main/res/xml/network_security_config.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../android-app/gradle/libs.versions.toml" beforeDir="false" afterPath="$PROJECT_DIR$/../android-app/gradle/libs.versions.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/auth.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/database.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/models.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/routers/auth.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/routers/receipts.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/schemas.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -91,7 +101,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1768738811965</updated>
-      <workItem from="1768738813442" duration="5506000" />
+      <workItem from="1768738813442" duration="7315000" />
     </task>
     <servers />
   </component>
