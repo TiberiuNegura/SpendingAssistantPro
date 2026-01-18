@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val request = Request.Builder()
-            .url("http://192.168.1.15:8000/extract")
+            .url("http://192.168.1.3:8000/extract")
             .post(body)
             .build()
 
@@ -135,7 +135,7 @@ class MainActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.d("API", "Fail")
+                Log.d("API", "Fail with exception: $e")
                 e.printStackTrace()
             }
 
