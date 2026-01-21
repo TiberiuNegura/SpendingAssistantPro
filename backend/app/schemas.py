@@ -27,7 +27,3 @@ class ReceiptData(BaseModel):
     issue_date: Optional[datetime] = None
     items: List[ReceiptItem] = Field(default_factory=list)
     total_price: float = 0.0
-
-class ReceiptResponse(BaseModel):
-    extracted_by: str
-    data: ReceiptData

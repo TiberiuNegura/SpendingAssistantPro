@@ -6,7 +6,7 @@ from PIL import Image
 from transformers import DonutProcessor, VisionEncoderDecoderModel
 import torch
 
-from app.schemas import ReceiptResponse, ReceiptItem, ReceiptData
+from app.schemas import ReceiptItem, ReceiptData
 
 
 class ReceiptExtractor:
@@ -33,7 +33,7 @@ class ReceiptExtractor:
         print(f"Using device: {self.device}")
         print("Model loaded successfully.")
 
-    def process_receipt(self, receipt_path: str) -> ReceiptResponse:
+    def process_receipt(self, receipt_path: str) -> ReceiptData | None:
         """
         Extracts information from a given receipt image.
 
@@ -142,8 +142,7 @@ class ReceiptExtractor:
         return result
 
     @staticmethod
-    def _map_to_classes(json_dict: dict) -> ReceiptResponse:
-        # ERROR FIX: The input dict IS the raw data, so we use it directly.
+    def _map_to_classes(json_dict: dict) -> ReceiptData:
         raw_data = json_dict
 
         menu_items = raw_data.get("menu", [])
@@ -186,24 +185,15 @@ class ReceiptExtractor:
                 # Skip items that don't have valid numbers
                 continue
 
-                # 3. Handle Subtotal
-        sub_total_dict = raw_data.get("sub_total", {})
-        subtotal_str = sub_total_dict.get("subtotal_price", "0.0")
+        # 3. Compute Receipt total
+        total_value = sum(item.quantity * item.price for item in refined_items)
 
-        try:
-            subtotal_val = float(subtotal_str.strip())
-        except ValueError:
-            subtotal_val = 0.0
-
-        # 4. Construct Response
-        return ReceiptResponse(
-            extracted_by="Cosbos",  # Hardcoded or passed as an argument
-            data=ReceiptData(
+        return ReceiptData(
                 issue_date=parsed_date,
                 items=refined_items,
-                total_price=subtotal_val
+                total_price=total_value
             )
-        )
+
 
 
 # --- How to use the class ---
@@ -214,7 +204,7 @@ if __name__ == "__main__":
     extractor = ReceiptExtractor()
 
     # 2. Define the path to your receipt
-    receipt_path = 'receipt_5.png'
+    receipt_path = 'receipt_4_bold.png'
 
     # 3. Process the receipt
     extracted_data = extractor.process_receipt(receipt_path)
