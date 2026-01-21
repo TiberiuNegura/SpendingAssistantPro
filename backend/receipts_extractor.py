@@ -1,8 +1,12 @@
 import re
 import json
+from datetime import datetime
+
 from PIL import Image
 from transformers import DonutProcessor, VisionEncoderDecoderModel
 import torch
+
+from app.schemas import ReceiptResponse, ReceiptItem, ReceiptData
 
 
 class ReceiptExtractor:
@@ -29,7 +33,7 @@ class ReceiptExtractor:
         print(f"Using device: {self.device}")
         print("Model loaded successfully.")
 
-    def process_receipt(self, receipt_path: str):
+    def process_receipt(self, receipt_path: str) -> ReceiptResponse:
         """
         Extracts information from a given receipt image.
 
@@ -82,7 +86,10 @@ class ReceiptExtractor:
 
         # Use the static parsing method
         parsed_data = self._parse_model_output(sequence)
-        return parsed_data
+        # Map the dictonary to classes
+        mapped_data = self._map_to_classes(parsed_data)
+
+        return mapped_data
 
     @staticmethod
     def _parse_model_output(output_string: str):
@@ -134,6 +141,70 @@ class ReceiptExtractor:
 
         return result
 
+    @staticmethod
+    def _map_to_classes(json_dict: dict) -> ReceiptResponse:
+        # ERROR FIX: The input dict IS the raw data, so we use it directly.
+        raw_data = json_dict
+
+        menu_items = raw_data.get("menu", [])
+
+        refined_items = []
+        parsed_date = None
+
+        for entry in menu_items:
+            # Get name safe access
+            name_list = entry.get("nm", [""])
+            name = name_list[0].strip() if name_list else "Unknown"
+
+            # 1. Handle the "Supermarket" Date Row
+            if "Supermarket" in name:
+                # The date is hidden in 'unitprice' based on your logic
+                date_list = entry.get("unitprice", [""])
+                date_str = date_list[0].strip() if date_list else ""
+
+                if date_str:
+                    try:
+                        # Parse "12/05/2024" -> DateTime
+                        parsed_date = datetime.strptime(date_str, "%d/%m/%Y")
+                    except ValueError:
+                        print(f"Warning: Could not parse date '{date_str}'")
+                        parsed_date = None
+                continue
+
+            # 2. Handle Standard Items
+            try:
+                cnt_list = entry.get("cnt", ["0"])
+                price_list = entry.get("price", ["0.0"])
+
+                item = ReceiptItem(
+                    name=name,
+                    quantity=int(cnt_list[0].strip()),
+                    price=float(price_list[0].strip())
+                )
+                refined_items.append(item)
+            except (ValueError, IndexError) as e:
+                # Skip items that don't have valid numbers
+                continue
+
+                # 3. Handle Subtotal
+        sub_total_dict = raw_data.get("sub_total", {})
+        subtotal_str = sub_total_dict.get("subtotal_price", "0.0")
+
+        try:
+            subtotal_val = float(subtotal_str.strip())
+        except ValueError:
+            subtotal_val = 0.0
+
+        # 4. Construct Response
+        return ReceiptResponse(
+            extracted_by="Cosbos",  # Hardcoded or passed as an argument
+            data=ReceiptData(
+                issue_date=parsed_date,
+                items=refined_items,
+                total_price=subtotal_val
+            )
+        )
+
 
 # --- How to use the class ---
 if __name__ == "__main__":
@@ -143,7 +214,7 @@ if __name__ == "__main__":
     extractor = ReceiptExtractor()
 
     # 2. Define the path to your receipt
-    receipt_path = 'receipt_2.png'
+    receipt_path = 'receipt_5.png'
 
     # 3. Process the receipt
     extracted_data = extractor.process_receipt(receipt_path)
