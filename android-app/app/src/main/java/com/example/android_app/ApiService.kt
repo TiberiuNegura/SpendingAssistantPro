@@ -1,5 +1,6 @@
 package com.example.android_app
 
+import com.example.android_app.data.PingResponse
 import retrofit2.http.GET
 import retrofit2.Response
 

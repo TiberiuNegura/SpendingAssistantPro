@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.example.android_app.utils.DataParser
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType
@@ -127,7 +128,7 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val request = Request.Builder()
-            .url("http://192.168.1.3:8000/extract")
+            .url("http://192.168.1.9:8000/extract")
             .post(body)
             .build()
 
@@ -135,13 +136,35 @@ class MainActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.d("API", "Fail with exception: $e")
+                Log.d("API", "Fail with $e")
                 e.printStackTrace()
             }
 
             override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.message().toString()
-                Log.d("API", "Response: $responseBody")
+                // 1. Get the raw JSON string
+                val responseData = response.body()?.string()
+
+                if (response.isSuccessful && responseData != null) {
+                    try {
+                        // 2. Parse the JSON using the method we wrote
+                        val extraction = DataParser.extractData(responseData)
+
+                        // Log the results for debugging
+                        Log.d("API", "Extracted ${extraction.items.size} items.")
+                        Log.d("API", "Total Price: ${extraction.totalPrice}")
+
+                        // 3. Update the UI on the Main Thread
+//                        runOnUiThread {
+//                            // Example: updateUI(extraction)
+//                            // This is where you'd send 'extraction' to your adapter or state
+//                        }
+
+                    } catch (e: Exception) {
+                        Log.e("API", "Parsing error: ${e.message}")
+                    }
+                } else {
+                    Log.e("API", "Server Error: ${response.code()} - ${response.message()}")
+                }
             }
         })
     }
