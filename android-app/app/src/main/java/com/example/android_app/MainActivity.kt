@@ -78,8 +78,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         statsButton.setOnClickListener {
-            // TODO: adaugă funcționalitate View Statistics
+            val intent = Intent(this, StatisticsActivity::class.java)
+            startActivity(intent)
         }
+
     }
 
     override fun onRequestPermissionsResult(
