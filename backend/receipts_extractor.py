@@ -28,7 +28,13 @@ class ReceiptExtractor:
         self.processor = DonutProcessor.from_pretrained(model_name)
         self.model = VisionEncoderDecoderModel.from_pretrained(model_name)
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.backends.mps.is_available():
+          self.device = "mps"
+        elif torch.cuda.is_available():
+          self.device = "cuda"
+        else:
+          self.device = "cpu"
+
         self.model.to(self.device)
         print(f"Using device: {self.device}")
         print("Model loaded successfully.")
