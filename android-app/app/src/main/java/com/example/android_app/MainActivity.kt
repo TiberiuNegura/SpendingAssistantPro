@@ -47,6 +47,15 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        // 🔒 PROTECȚIE: dacă NU e logat → Login
+        val token = getSharedPreferences("auth", MODE_PRIVATE)
+            .getString("token", null)
+
+        if (token == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
 
         val rootLayout = findViewById<LinearLayout>(R.id.main)
         ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { v, insets ->
@@ -55,12 +64,11 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-       
         val scanButton = findViewById<Button>(R.id.scan_button)
         val statsButton = findViewById<Button>(R.id.stats_button)
+        val logoutButton = findViewById<Button>(R.id.btnLogout)   // 🔴 NOU
 
         scanButton.setOnClickListener {
-            // TODO: adaugă funcționalitate Scan
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED
             ) {
@@ -72,7 +80,6 @@ class MainActivity : AppCompatActivity() {
                     "${packageName}.fileprovider",
                     photoFile
                 )
-
                 takePictureLauncher.launch(photoUri)
             }
         }
@@ -82,7 +89,22 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // 🔴 LOGOUT
+        logoutButton.setOnClickListener {
+            doLogout()
+        }
     }
+    private fun doLogout() {
+        getSharedPreferences("auth", MODE_PRIVATE)
+            .edit()
+            .remove("token")
+            .apply()
+
+        val intent = Intent(this, LoginActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+    }
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
