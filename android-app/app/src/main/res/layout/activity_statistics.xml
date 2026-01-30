@@ -41,12 +41,11 @@
         app:layout_constraintTop_toBottomOf="@id/balanceLabel"
         app:layout_constraintStart_toStartOf="@id/titleText"/>
 
-    <!-- CIRCLE PLACEHOLDER (CHART) -->
-    <View
-        android:id="@+id/chartPlaceholder"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:background="@drawable/circle_placeholder"
+    <!-- PIE CHART -->
+    <com.github.mikephil.charting.charts.PieChart
+        android:id="@+id/pieChart"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
         app:layout_constraintTop_toBottomOf="@id/balanceText"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -61,38 +60,19 @@
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#111827"
-        app:layout_constraintTop_toBottomOf="@id/chartPlaceholder"
+        app:layout_constraintTop_toBottomOf="@id/pieChart"
         app:layout_constraintStart_toStartOf="@id/titleText"
         android:layout_marginTop="24dp"/>
 
     <!-- CATEGORIES CONTAINER -->
-    <LinearLayout
-        android:id="@+id/categoriesContainer"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/categoriesRecyclerView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         app:layout_constraintTop_toBottomOf="@id/categoriesTitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_margin="20dp">
-
-        <include
-            layout="@layout/item_category"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-
-        <include
-            layout="@layout/item_category"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-
-        <include
-            layout="@layout/item_category"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-
-
-    </LinearLayout>
+        android:layout_margin="20dp"/>
 
     <!-- EMPTY STATE -->
     <LinearLayout

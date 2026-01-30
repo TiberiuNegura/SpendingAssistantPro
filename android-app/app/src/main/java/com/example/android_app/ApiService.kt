@@ -1,6 +1,7 @@
 package com.example.android_app
 
 import com.example.android_app.data.PingResponse
+import com.example.android_app.data.UserDataSummary
 import retrofit2.http.GET
 import retrofit2.Response
 import retrofit2.http.*
@@ -22,4 +23,10 @@ interface ApiService {
     suspend fun register(
         @Body request: RegisterRequest
     ): Response<GenericResponse>
+
+    // STATISTICS - Get user data summary
+    @GET("user/data")
+    suspend fun getUserData(
+        @Header("Authorization") token: String
+    ): Response<UserDataSummary>
 }

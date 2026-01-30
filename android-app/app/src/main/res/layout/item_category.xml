@@ -8,6 +8,7 @@
     android:elevation="3dp">
 
     <TextView
+        android:id="@+id/categoryName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Category name"
@@ -15,12 +16,14 @@
         android:textSize="16sp"/>
 
     <TextView
+        android:id="@+id/categoryAmount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="$0 left"
+        android:text="$0"
         android:textColor="#6B7280"/>
 
     <ProgressBar
+        android:id="@+id/categoryProgress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="8dp"

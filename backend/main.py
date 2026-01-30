@@ -3,12 +3,12 @@ from fastapi import FastAPI
 from app.database import engine, Base
 from app.routers import auth, receipts
 
-# Import the extractor class from the file in the root directory
+# Import the improved extractor class from classifier.py
 try:
-    from receipts_extractor import ReceiptExtractor
+    from classifier import ReceiptExtractor
 except ImportError:
     ReceiptExtractor = None
-    print("Warning: receipts_extractor.py not found.")
+    print("Warning: classifier.py not found.")
 
 # Create DB Tables
 Base.metadata.create_all(bind=engine)

@@ -133,6 +133,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun uploadImageToServer(imageUri: Uri) {
+        // Get the authentication token
+        val token = getSharedPreferences("auth", MODE_PRIVATE).getString("token", null)
+
+        if (token == null) {
+            Log.e("API", "No authentication token found")
+            runOnUiThread {
+                android.widget.Toast.makeText(this, "Please login first", android.widget.Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+
         val contentResolver = contentResolver
         val inputStream = contentResolver.openInputStream(imageUri)
         val imageBytes = inputStream?.readBytes() ?: return
@@ -152,7 +163,8 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val request = Request.Builder()
-            .url("http://192.168.1.9:8000/extract")
+            .url("${RetrofitInstance.baseUrl}extract")
+            .addHeader("Authorization", "Bearer $token")  // Add JWT token
             .post(body)
             .build()
 
@@ -160,8 +172,14 @@ class MainActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.d("API", "Fail with $e")
-                e.printStackTrace()
+                Log.e("API", "Network failure: $e")
+                runOnUiThread {
+                    android.widget.Toast.makeText(
+                        this@MainActivity,
+                        "Network error: ${e.message}",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -176,18 +194,50 @@ class MainActivity : AppCompatActivity() {
                         // Log the results for debugging
                         Log.d("API", "Extracted ${extraction.items.size} items.")
                         Log.d("API", "Total Price: ${extraction.totalPrice}")
+                        Log.d("API", "Response data: $responseData")
 
-                        // 3. Update the UI on the Main Thread
-//                        runOnUiThread {
-//                            // Example: updateUI(extraction)
-//                            // This is where you'd send 'extraction' to your adapter or state
-//                        }
+                        // 3. Show success message
+                        runOnUiThread {
+                            android.widget.Toast.makeText(
+                                this@MainActivity,
+                                "Receipt processed! Total: ${extraction.totalPrice}",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
 
                     } catch (e: Exception) {
                         Log.e("API", "Parsing error: ${e.message}")
+                        runOnUiThread {
+                            android.widget.Toast.makeText(
+                                this@MainActivity,
+                                "Error parsing receipt data",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 } else {
+                    val errorMsg = when (response.code()) {
+                        401 -> "Authentication failed. Please login again."
+                        400 -> "Invalid receipt image"
+                        500 -> "Server error. Please try again."
+                        503 -> "Model not loaded on server"
+                        else -> "Server Error: ${response.code()}"
+                    }
                     Log.e("API", "Server Error: ${response.code()} - ${response.message()}")
+                    Log.e("API", "Response body: $responseData")
+
+                    runOnUiThread {
+                        android.widget.Toast.makeText(
+                            this@MainActivity,
+                            errorMsg,
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+
+                        // If 401, redirect to login
+                        if (response.code() == 401) {
+                            doLogout()
+                        }
+                    }
                 }
             }
         })
